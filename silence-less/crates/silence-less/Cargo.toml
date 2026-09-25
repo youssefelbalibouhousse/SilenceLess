@@ -1,0 +1,8 @@
+[package]
+name = "silence-less"
+version = "0.1.0"
+edition = "2021"
+description = "CLI SilenceLess : trim les silences d'un dossier de .wav et exporte en .mp3"
+
+[dependencies]
+silence-less-core = { path = "../silence-less-core" }

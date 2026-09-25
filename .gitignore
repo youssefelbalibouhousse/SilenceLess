@@ -1,0 +1,31 @@
+# Environnement virtuel
+.venv/
+venv/
+
+# Caches Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Sorties générées par le script
+mp3_output/
+
+# Rust / Cargo
+target/
+
+# IDE et éditeurs
+.vscode/
+.idea/
+*.swp
+
+# Journalisation et fichiers temporaires
+*.log
+.DS_Store
+Thumbs.db
+
+# Secrets (par précaution : ne jamais committer de clés/jetons)
+.env
+.env.*
+*.pem
+*.key
+

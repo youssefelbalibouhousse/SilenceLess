@@ -1,0 +1,14 @@
+# Dépendances Python du projet SilenceLess
+# Installation :  .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+
+# Traitement audio (emballage autour de ffmpeg)
+pydub==0.25.1
+
+# Détection des silences vectorisée. pydub teste une fenêtre à chaque
+# milliseconde ; numpy calcule la même chose par sommes cumulées (~250x plus
+# rapide sur un fichier de 60 s).
+numpy==2.5.3
+
+# Backport du module `audioop`, supprimé de la bibliothèque standard en Python 3.13.
+# Uniquement nécessaire sur Python >= 3.13, inutile (et non installable) en dessous.
+audioop-lts==0.2.2; python_version >= "3.13"

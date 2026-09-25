@@ -1,0 +1,23 @@
+# Normalise les fins de ligne
+* text=auto
+
+# Sources : fins de ligne LF
+*.rs text eol=lf
+*.py text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.js text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+
+# Scripts Windows : CRLF
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binaires
+*.png binary
+*.ico binary
+*.mp3 binary
+*.wav binary

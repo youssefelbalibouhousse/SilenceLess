@@ -1,0 +1,12 @@
+[package]
+name = "silence-less-core"
+version = "0.1.0"
+edition = "2021"
+description = "Lecture WAV, détection de silence et encodage MP3 (cœur de SilenceLess)"
+
+[dependencies]
+hound = "3.5"
+mp3lame-encoder = "0.2.5"
+
+[dev-dependencies]
+hound = "3.5"

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SilenceLess</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <h1>SilenceLess</h1>
+        <p class="subtitle">Convertit vos .wav en .mp3 en supprimant les silences</p>
+      </header>
+
+      <section class="card drop-zone" id="drop-zone">
+        <div class="drop-hint">
+          <p class="drop-title">Glissez-déposez un dossier de <strong>.wav</strong> ici</p>
+          <p class="muted">ou sélectionnez un dossier :</p>
+          <div class="row">
+            <input type="text" id="folder" placeholder="C:\chemin\vers\vos_wav" />
+            <button id="pick" class="secondary">Parcourir…</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Réglages</h2>
+        <div class="grid">
+          <label>Seuil de silence (dBFS)
+            <input type="number" id="threshold" value="-30" step="1" />
+          </label>
+          <label>Durée min. d'un silence (ms)
+            <input type="number" id="min-silence" value="500" step="50" />
+          </label>
+          <label>Marge conservée (ms)
+            <input type="number" id="padding" value="100" step="10" />
+          </label>
+          <label>Bitrate MP3 (kbps)
+            <input type="number" id="bitrate" value="192" step="32" />
+          </label>
+        </div>
+        <label class="checkbox">
+          <input type="checkbox" id="trim-internal" />
+          Couper aussi les silences à l'intérieur
+        </label>
+        <label class="out">
+          Dossier de sortie
+          <span class="muted">(vide = dossier <code>mp3_output</code> à côté des fichiers)</span>
+          <input type="text" id="out" placeholder="C:\chemin\de\sortie" />
+        </label>
+      </section>
+
+      <button class="primary" id="start">Convertir</button>
+
+      <section class="card" id="results" hidden>
+        <div class="progress"><div id="bar"></div></div>
+        <p id="status" class="status"></p>
+        <ul id="list"></ul>
+      </section>
+    </main>
+    <script src="main.js"></script>
+  </body>
+</html>
