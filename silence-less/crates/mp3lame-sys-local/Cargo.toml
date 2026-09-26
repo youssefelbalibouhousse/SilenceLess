@@ -1,0 +1,26 @@
+[package]
+name = "mp3lame-sys"
+version = "0.1.11"
+edition = "2021"
+repository = "https://github.com/DoumanAsh/mp3lame-sys"
+description = "Bindings to mp3lame library (copie locale avec config Android)"
+license = "LGPL-3.0"
+build = "build.rs"
+
+[lib]
+name = "mp3lame_sys"
+path = "src/lib.rs"
+
+[dependencies.libc]
+version = "0.2"
+default-features = false
+
+[target.'cfg(unix)'.build-dependencies.autotools]
+version = "0.2.6"
+
+[target.'cfg(windows)'.build-dependencies.cc]
+version = "1.0.77"
+
+[features]
+decoder = []
+target_host = []

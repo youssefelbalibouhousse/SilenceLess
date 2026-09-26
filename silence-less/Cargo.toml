@@ -1,3 +1,9 @@
 [workspace]
 resolver = "2"
 members = ["crates/silence-less-core", "crates/silence-less", "src-tauri"]
+
+# Version locale de mp3lame-sys : ajoute un config.h correct pour la
+# cross-compilation Android (le configMS.h d'origine entre en conflit avec
+# <stdint.h> du NDK). Voir crates/mp3lame-sys-local/.
+[patch.crates-io]
+mp3lame-sys = { path = "crates/mp3lame-sys-local" }
