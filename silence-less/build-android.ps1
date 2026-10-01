@@ -15,6 +15,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+Set-Location $PSScriptRoot
+
 $sdk = "$env:LOCALAPPDATA\Android\Sdk"
 $ndk = "$sdk\ndk\27.0.12077973"
 $bin = "$ndk\toolchains\llvm\prebuilt\windows-x86_64\bin"
@@ -46,6 +48,14 @@ $env:AR_x86_64_linux_android = "$bin\llvm-ar.exe"
 $env:CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER = "$bin\x86_64-linux-android21-clang.cmd"
 
 $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+
+# Copie le plugin Kotlin personnalisé dans le projet Android généré
+# (le dossier gen/android est régénéré par `cargo tauri android init`).
+$kotlinSrc = Join-Path $PSScriptRoot "android\ExportPlugin.kt"
+$kotlinDst = Join-Path $PSScriptRoot "src-tauri\gen\android\app\src\main\java\fr\silenceless\ExportPlugin.kt"
+if (Test-Path $kotlinSrc) {
+    Copy-Item -Force $kotlinSrc $kotlinDst
+}
 
 $args = @()
 if ($Debug) { $args += "--debug" }

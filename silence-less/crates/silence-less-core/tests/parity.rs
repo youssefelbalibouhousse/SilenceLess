@@ -4,7 +4,7 @@
 //! Les fichiers de test sont des sinusoïdes déterministes :
 //!   - silence = échantillons nuls (RMS 0)
 //!   - son = sinusoïde 440 Hz d'amplitude 8000 (RMS ≈ 5657)
-//! Avec le seuil par défaut de -30 dBFS (soit ~1036,2), la séparation est sans
+//! Avec un seuil de -30 dBFS (soit ~1036,2), la séparation est sans
 //! ambiguïté. Les valeurs attendues correspondent exactement à celles produites
 //! par `SilenceLess.py` avec les mêmes réglages (vérifié, écart 0 ms).
 
@@ -58,6 +58,15 @@ fn temp_dir(name: &str) -> PathBuf {
     dir
 }
 
+/// Seuil épinglé à -30 dB : les valeurs attendues ont été validées contre
+/// `SilenceLess.py` avec ce réglage (indépendant du seuil par défaut de l'app).
+fn settings() -> Settings {
+    Settings {
+        silence_threshold_db: -30.0,
+        ..Default::default()
+    }
+}
+
 #[test]
 fn detects_one_burst_with_padding() {
     // 30 s : son de 2 s à 8 s, silence ailleurs.
@@ -75,7 +84,7 @@ fn detects_one_burst_with_padding() {
     let audio = read_wav(&path).expect("lecture WAV");
     assert_eq!(audio.duration_ms, 30_000);
 
-    let settings = Settings::default();
+    let settings = settings();
     let ranges = detect_nonsilent_ranges(&audio, &settings);
     assert_eq!(ranges, vec![(2_010, 7_990)]);
 
@@ -98,7 +107,7 @@ fn process_file_encodes_mp3() {
     );
     write_wav(&path, &samples);
 
-    let stats = process_file(&path, &out, &Settings::default()).expect("traitement");
+    let stats = process_file(&path, &out, &settings()).expect("traitement");
     assert!(!stats.all_silent);
     assert_eq!(stats.original_ms, 30_000);
     assert_eq!(stats.kept_ms, 6_180);
@@ -122,7 +131,7 @@ fn streaming_matches_in_memory() {
     );
     write_wav(&path, &samples);
 
-    let settings = Settings::default();
+    let settings = settings();
     let audio = silence_less_core::read_wav(&path).expect("lecture");
     let expected_frames = silence_less_core::trim_samples(&audio, &settings)
         .expect("découpe")
@@ -143,7 +152,7 @@ fn all_silent_returns_none() {
     write_wav(&path, &vec![0_i16; 5 * SAMPLE_RATE as usize * CHANNELS as usize]);
 
     let audio = read_wav(&path).expect("lecture WAV");
-    let settings = Settings::default();
+    let settings = settings();
     assert!(detect_nonsilent_ranges(&audio, &settings).is_empty());
     assert!(trim_samples(&audio, &settings).is_none());
 }
@@ -157,7 +166,7 @@ fn all_sound_keeps_everything() {
     write_wav(&path, &sine(frames, 0, frames, 8000.0, 440.0));
 
     let audio = read_wav(&path).expect("lecture WAV");
-    let ranges = detect_nonsilent_ranges(&audio, &Settings::default());
+    let ranges = detect_nonsilent_ranges(&audio, &settings());
     assert_eq!(ranges, vec![(0, 10_000)]);
 }
 
@@ -183,7 +192,7 @@ fn trims_internal_silence_when_enabled() {
     write_wav(&path, &samples);
 
     let audio = read_wav(&path).expect("lecture WAV");
-    let settings = Settings::default();
+    let settings = settings();
     assert_eq!(
         detect_nonsilent_ranges(&audio, &settings),
         vec![(2_010, 3_990), (10_010, 11_990)]

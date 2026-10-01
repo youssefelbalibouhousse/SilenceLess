@@ -91,7 +91,7 @@ fn print_help() {
          \x20 -j, --jobs <N>          fichiers traités en parallèle (0 = auto)\n\
          \x20     --seek-step <ms>    pas de détection des silences (défaut : 10)\n\
          \x20     --min-silence <ms>  durée minimale d'un silence (défaut : 500)\n\
-         \x20     --threshold <dB>    seuil de silence en dBFS (défaut : -40)\n\
+         \x20     --threshold <dB>    seuil de silence en dBFS (défaut : -45)\n\
          \x20     --padding <ms>      marge conservée autour du son (défaut : 100)\n\
          \x20     --bitrate <kbps>    bitrate MP3 (défaut : 192)\n\
          \x20     --trim-internal     coupe aussi les silences à l'intérieur\n\

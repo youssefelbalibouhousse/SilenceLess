@@ -52,56 +52,85 @@ struct DonePayload {
     failures: usize,
 }
 
-/// Traite une liste de fichiers dans un thread de travail, en émettant la
-/// progression au fil de l'eau.
+/// Traite une liste de fichiers en parallèle (un thread par cœur), en émettant
+/// la progression au fil de l'eau.
 fn process_paths(
     app: tauri::AppHandle,
     inputs: Vec<PathBuf>,
     out_dir: PathBuf,
     settings: CoreSettings,
 ) {
-    let total = inputs.len();
-    std::thread::spawn(move || {
-        let mut failures = 0_usize;
-        for (index, wav) in inputs.iter().enumerate() {
-            let name = wav
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            let stem = wav
-                .file_stem()
-                .map(|s| s.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            let mp3 = out_dir.join(format!("{stem}.mp3"));
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
-            let payload = match process_file(wav, &mp3, &settings) {
-                Ok(stats) if stats.all_silent => ProgressPayload {
-                    done: index + 1,
-                    total,
-                    name,
-                    ok: true,
-                    message: "entièrement silencieux, ignoré".to_string(),
-                },
-                Ok(stats) => ProgressPayload {
-                    done: index + 1,
-                    total,
-                    name,
-                    ok: true,
-                    message: format!("{:.2}s", stats.kept_ms as f64 / 1000.0),
-                },
-                Err(e) => {
-                    failures += 1;
-                    ProgressPayload {
-                        done: index + 1,
-                        total,
-                        name,
-                        ok: false,
-                        message: e,
+    let total = inputs.len();
+    if total == 0 {
+        return;
+    }
+
+    std::thread::spawn(move || {
+        // Un thread par cœur, borné au nombre de fichiers.
+        let workers = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1)
+            .min(total);
+        let done = std::sync::Arc::new(AtomicUsize::new(0));
+        let failures = std::sync::Arc::new(AtomicUsize::new(0));
+        let chunk = total.div_ceil(workers);
+
+        std::thread::scope(|scope| {
+            for files in inputs.chunks(chunk) {
+                let app = app.clone();
+                let out_dir = out_dir.clone();
+                let settings = settings.clone();
+                let done = std::sync::Arc::clone(&done);
+                let failures = std::sync::Arc::clone(&failures);
+
+                scope.spawn(move || {
+                    for wav in files {
+                        let name = wav
+                            .file_name()
+                            .map(|n| n.to_string_lossy().into_owned())
+                            .unwrap_or_default();
+                        let stem = wav
+                            .file_stem()
+                            .map(|s| s.to_string_lossy().into_owned())
+                            .unwrap_or_default();
+                        let mp3 = out_dir.join(format!("{stem}.mp3"));
+
+                        let d = done.fetch_add(1, Ordering::Relaxed) + 1;
+                        let payload = match process_file(wav, &mp3, &settings) {
+                            Ok(stats) if stats.all_silent => ProgressPayload {
+                                done: d,
+                                total,
+                                name,
+                                ok: true,
+                                message: "entièrement silencieux, ignoré".to_string(),
+                            },
+                            Ok(stats) => ProgressPayload {
+                                done: d,
+                                total,
+                                name,
+                                ok: true,
+                                message: format!("{:.2}s", stats.kept_ms as f64 / 1000.0),
+                            },
+                            Err(e) => {
+                                failures.fetch_add(1, Ordering::Relaxed);
+                                ProgressPayload {
+                                    done: d,
+                                    total,
+                                    name,
+                                    ok: false,
+                                    message: e,
+                                }
+                            }
+                        };
+                        let _ = app.emit("silence-progress", payload);
                     }
-                }
-            };
-            let _ = app.emit("silence-progress", payload);
-        }
+                });
+            }
+        });
+
+        let failures = failures.load(Ordering::Relaxed);
         let _ = app.emit("silence-done", DonePayload { total, failures });
     });
 }
@@ -161,11 +190,91 @@ fn process_files(
     Ok(())
 }
 
+/// Réponse du plugin Android `importFiles`.
+#[cfg(target_os = "android")]
+#[derive(Serialize, Deserialize)]
+struct ImportResponse {
+    paths: Vec<String>,
+}
+
+/// Réponse du plugin Android `saveToDownloads`.
+#[derive(Serialize, Deserialize)]
+struct SaveResponse {
+    count: usize,
+    names: Vec<String>,
+}
+
+#[cfg(target_os = "android")]
+struct AndroidBridge<R: tauri::Runtime>(tauri::plugin::PluginHandle<R>);
+
+/// Pont vers le code Kotlin Android (import de fichiers + export vers Téléchargements).
+fn android_bridge<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
+    tauri::plugin::Builder::new("android-bridge")
+        .setup(|app, api| {
+            #[cfg(target_os = "android")]
+            {
+                let handle = api.register_android_plugin("fr.silenceless", "ExportPlugin")?;
+                app.manage(AndroidBridge(handle));
+            }
+            #[cfg(not(target_os = "android"))]
+            let _ = (&app, &api);
+            Ok(())
+        })
+        .build()
+}
+
+/// Importe des fichiers choisis sur le téléphone (URI `content://`) dans le
+/// stockage privé de l'app et renvoie de vrais chemins lisibles par Rust.
+#[tauri::command]
+async fn import_files(app: tauri::AppHandle, paths: Vec<String>) -> Result<Vec<String>, String> {
+    #[cfg(target_os = "android")]
+    {
+        let bridge = app.state::<AndroidBridge<tauri::Wry>>();
+        let resp: ImportResponse = bridge
+            .0
+            .run_mobile_plugin_async("importFiles", serde_json::json!({ "uris": paths }))
+            .await
+            .map_err(|e| e.to_string())?;
+        return Ok(resp.paths);
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Ok(paths)
+    }
+}
+
+/// Exporte les MP3 générés vers le dossier Téléchargements (Android).
+#[tauri::command]
+async fn save_to_downloads(app: tauri::AppHandle) -> Result<SaveResponse, String> {
+    #[cfg(target_os = "android")]
+    {
+        let bridge = app.state::<AndroidBridge<tauri::Wry>>();
+        let resp: SaveResponse = bridge
+            .0
+            .run_mobile_plugin_async("saveToDownloads", serde_json::json!({}))
+            .await
+            .map_err(|e| e.to_string())?;
+        return Ok(resp);
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("export disponible uniquement sur Android".to_string())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![process_folder, process_files])
+        .plugin(android_bridge())
+        .invoke_handler(tauri::generate_handler![
+            process_folder,
+            process_files,
+            import_files,
+            save_to_downloads
+        ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
                 let handle = app.handle().clone();

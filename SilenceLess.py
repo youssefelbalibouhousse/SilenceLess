@@ -21,7 +21,7 @@ from pydub.utils import db_to_float
 
 # ---------- CONFIGURATION ----------
 # Seuil de silence en dBFS (plus c'est proche de 0, plus c'est strict)
-SILENCE_THRESHOLD_DB = -30
+SILENCE_THRESHOLD_DB = -45
 
 # Durée minimale d'un silence pour être considéré comme tel (ms)
 MIN_SILENCE_LEN_MS = 500

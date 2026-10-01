@@ -29,7 +29,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            silence_threshold_db: -30.0,
+            silence_threshold_db: -45.0,
             min_silence_len_ms: 500,
             keep_padding_ms: 100,
             seek_step_ms: 10,
@@ -338,7 +338,7 @@ pub fn encode_mp3(
         .map_err(|e| format!("fréquence d'échantillonnage : {e}"))?
         .with_brate(bitrate)
         .map_err(|e| format!("bitrate : {e}"))?
-        .with_quality(Quality::Best)
+        .with_quality(Quality::Good)
         .map_err(|e| format!("qualité : {e}"))?
         .build()
         .map_err(|e| format!("initialisation LAME : {e}"))?;
@@ -609,7 +609,7 @@ fn build_encoder(
         .map_err(|e| format!("fréquence d'échantillonnage : {e}"))?
         .with_brate(brate)
         .map_err(|e| format!("bitrate : {e}"))?
-        .with_quality(Quality::Best)
+        .with_quality(Quality::Good)
         .map_err(|e| format!("qualité : {e}"))?
         .build()
         .map_err(|e| format!("initialisation LAME : {e}"))
@@ -650,12 +650,16 @@ fn encode_region_streaming(
     const FRAMES_PER_CHUNK: usize = 23_040; // 1152 * 20
 
     let mut reader = WavReader::open(path).map_err(|e| e.to_string())?;
+    // Positionne directement le lecteur au début de la zone à encoder (au lieu
+    // de relire tout le début du fichier via `.skip`).
+    reader
+        .seek(start_frame as u32)
+        .map_err(|e| format!("positionnement dans le WAV : {e}"))?;
     let mut encoder = build_encoder(info.sample_rate, info.channels, bitrate(settings.bitrate_kbps))?;
     let file = std::fs::File::create(output).map_err(|e| format!("écriture de {output:?} : {e}"))?;
     let mut writer = std::io::BufWriter::new(file);
 
     let channels = info.channels as usize;
-    let skip = (start_frame as usize) * channels;
     let total = ((end_frame - start_frame) as usize) * channels;
     let chunk = FRAMES_PER_CHUNK * channels;
     let mut buf: Vec<i16> = Vec::with_capacity(chunk);
@@ -663,7 +667,7 @@ fn encode_region_streaming(
 
     match info.bits_per_sample {
         16 => {
-            for sample in reader.samples::<i16>().skip(skip) {
+            for sample in reader.samples::<i16>() {
                 if remaining == 0 {
                     break;
                 }
@@ -676,7 +680,7 @@ fn encode_region_streaming(
             }
         }
         24 | 32 => {
-            for sample in reader.samples::<i32>().skip(skip) {
+            for sample in reader.samples::<i32>() {
                 if remaining == 0 {
                     break;
                 }

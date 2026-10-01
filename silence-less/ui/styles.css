@@ -15,17 +15,26 @@
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   font-family: "Segoe UI", system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .app {
   max-width: 720px;
   margin: 0 auto;
-  padding: 24px 20px 48px;
+  padding: calc(24px + env(safe-area-inset-top, 0px))
+    calc(20px + env(safe-area-inset-right, 0px))
+    calc(48px + env(safe-area-inset-bottom, 0px))
+    calc(20px + env(safe-area-inset-left, 0px));
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -89,8 +98,9 @@ input[type="number"] {
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
-  padding: 8px 10px;
-  font-size: 14px;
+  padding: 10px 12px;
+  font-size: 16px;
+  min-height: 44px;
 }
 
 input:focus {
@@ -100,21 +110,31 @@ input:focus {
 
 button {
   border: none;
-  border-radius: 8px;
-  padding: 10px 16px;
-  font-size: 14px;
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-height: 44px;
+  font-size: 16px;
   cursor: pointer;
   color: #fff;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 160ms ease-out, background 160ms ease-out;
+}
+
+button:active {
+  transform: scale(0.97);
 }
 
 button.primary {
   background: var(--accent-2);
   font-weight: 600;
-  padding: 12px 16px;
+  padding: 14px 16px;
 }
 
-button.primary:hover {
-  background: #0284c7;
+@media (hover: hover) and (pointer: fine) {
+  button.primary:hover {
+    background: #0284c7;
+  }
 }
 
 button.secondary {
@@ -189,4 +209,48 @@ label.out {
 
 #list li.err {
   color: var(--err);
+}
+
+/* Mobile : touches plus grandes et disposition adaptée au pouce. */
+@media (max-width: 600px) {
+  .app {
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    gap: 12px;
+  }
+
+  header h1 {
+    font-size: 24px;
+  }
+
+  .card {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .row {
+    flex-direction: column;
+  }
+
+  .row input[type="text"] {
+    display: none;
+  }
+
+  .row .secondary {
+    width: 100%;
+    min-height: 52px;
+  }
+
+  button.primary {
+    min-height: 56px;
+  }
+}
+
+/* Accessibilité : mouvement réduit pour ceux qui le demandent. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
