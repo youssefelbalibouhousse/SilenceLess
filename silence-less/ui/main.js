@@ -4,6 +4,7 @@ const { listen } = window.__TAURI__.event;
 
 const $ = (id) => document.getElementById(id);
 const isAndroid = /android/i.test(navigator.userAgent);
+let outputFolderUri = null;
 
 function currentSettings() {
   return {
@@ -69,8 +70,7 @@ $("start").addEventListener("click", () => {
 $("pick").addEventListener("click", async () => {
   try {
     if (isAndroid) {
-      // Sur Android, on sélectionne des fichiers .wav (le sélecteur de
-      // dossiers n'existe pas) puis on les importe dans le stockage privé.
+      // Sur Android, on sélectionne des fichiers .wav puis on les importe.
       const picked = await invoke("plugin:dialog|open", {
         options: {
           multiple: true,
@@ -78,6 +78,10 @@ $("pick").addEventListener("click", async () => {
         },
       });
       if (Array.isArray(picked) && picked.length) {
+        if (picked.length > 5) {
+          showStatus("5 fichiers maximum — recommencez la sélection.");
+          return;
+        }
         const paths = await invoke("import_files", { paths: picked });
         $("folder").value = picked.length + " fichier(s) sélectionné(s)";
         start(paths);
@@ -97,6 +101,16 @@ $("pick").addEventListener("click", async () => {
   }
 });
 
+$("pick-out").addEventListener("click", async () => {
+  try {
+    const uri = await invoke("pick_output_folder");
+    outputFolderUri = uri;
+    $("out-name").textContent = "Dossier choisi ✓";
+  } catch (err) {
+    console.error(err);
+  }
+});
+
 listen("silence-progress", (event) => {
   const p = event.payload;
   appendLine(p.ok, p.name + (p.ok ? " — " + p.message : " — " + p.message));
@@ -112,9 +126,8 @@ listen("silence-done", async (event) => {
   $("bar").style.width = "100%";
   if (isAndroid && d.total > d.failures) {
     try {
-      const saved = await invoke("save_to_downloads");
-      $("status").textContent =
-        msg + " MP3 enregistrés dans Téléchargements/SilenceLess : " + saved.count + ".";
+      const saved = await invoke("save_to_folder", { folderUri: outputFolderUri });
+      $("status").textContent = msg + " MP3 enregistrés : " + saved.count + ".";
     } catch (e) {
       $("status").textContent = msg + " (export : " + e + ")";
     }

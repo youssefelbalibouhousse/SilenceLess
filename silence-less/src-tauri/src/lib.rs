@@ -197,11 +197,18 @@ struct ImportResponse {
     paths: Vec<String>,
 }
 
-/// Réponse du plugin Android `saveToDownloads`.
+/// Réponse du plugin Android `saveToFolder`.
 #[derive(Serialize, Deserialize)]
 struct SaveResponse {
     count: usize,
     names: Vec<String>,
+}
+
+/// Réponse du plugin Android `pickOutputFolder`.
+#[cfg(target_os = "android")]
+#[derive(Serialize, Deserialize)]
+struct PickFolderResponse {
+    uri: String,
 }
 
 #[cfg(target_os = "android")]
@@ -244,15 +251,41 @@ async fn import_files(app: tauri::AppHandle, paths: Vec<String>) -> Result<Vec<S
     }
 }
 
-/// Exporte les MP3 générés vers le dossier Téléchargements (Android).
+/// Ouvre le sélecteur de dossier de sortie (Android) et renvoie son URI.
 #[tauri::command]
-async fn save_to_downloads(app: tauri::AppHandle) -> Result<SaveResponse, String> {
+async fn pick_output_folder(app: tauri::AppHandle) -> Result<String, String> {
+    #[cfg(target_os = "android")]
+    {
+        let bridge = app.state::<AndroidBridge<tauri::Wry>>();
+        let resp: PickFolderResponse = bridge
+            .0
+            .run_mobile_plugin_async("pickOutputFolder", serde_json::json!({}))
+            .await
+            .map_err(|e| e.to_string())?;
+        return Ok(resp.uri);
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("choix du dossier disponible uniquement sur Android".to_string())
+    }
+}
+
+/// Exporte les MP3 générés vers le dossier choisi (ou Téléchargements si aucun).
+#[tauri::command]
+async fn save_to_folder(
+    app: tauri::AppHandle,
+    folder_uri: Option<String>,
+) -> Result<SaveResponse, String> {
     #[cfg(target_os = "android")]
     {
         let bridge = app.state::<AndroidBridge<tauri::Wry>>();
         let resp: SaveResponse = bridge
             .0
-            .run_mobile_plugin_async("saveToDownloads", serde_json::json!({}))
+            .run_mobile_plugin_async(
+                "saveToFolder",
+                serde_json::json!({ "folderUri": folder_uri }),
+            )
             .await
             .map_err(|e| e.to_string())?;
         return Ok(resp);
@@ -273,7 +306,8 @@ pub fn run() {
             process_folder,
             process_files,
             import_files,
-            save_to_downloads
+            pick_output_folder,
+            save_to_folder
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {

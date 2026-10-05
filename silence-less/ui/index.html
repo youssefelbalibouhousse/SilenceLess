@@ -19,11 +19,11 @@
 
       <section class="card drop-zone" id="drop-zone">
         <div class="drop-hint">
-          <p class="drop-title">Sélectionnez un dossier de <strong>.wav</strong></p>
-          <p class="muted">ou glissez-déposez-le ici (ordinateur)</p>
+          <p class="drop-title">Sélectionnez des fichiers <strong>.wav</strong></p>
+          <p class="muted">jusqu'à 5 fichiers — ou glissez-déposez un dossier (ordinateur)</p>
           <div class="row">
             <input type="text" id="folder" placeholder="C:\chemin\vers\vos_wav" />
-            <button id="pick" class="secondary">Choisir un dossier</button>
+            <button id="pick" class="secondary">Choisir des fichiers</button>
           </div>
         </div>
       </section>
@@ -52,6 +52,8 @@
           Dossier de sortie
           <span class="muted">(vide = dossier <code>mp3_output</code> à côté des fichiers)</span>
           <input type="text" id="out" placeholder="C:\chemin\de\sortie" />
+          <button id="pick-out" class="secondary mobile-only" type="button">Choisir un dossier…</button>
+          <span id="out-name" class="muted mobile-only"></span>
         </label>
       </section>
 

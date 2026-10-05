@@ -82,6 +82,10 @@ header h1 {
   font-size: 13px;
 }
 
+.mobile-only {
+  display: none;
+}
+
 .row {
   display: flex;
   gap: 8px;
@@ -101,6 +105,8 @@ input[type="number"] {
   padding: 10px 12px;
   font-size: 16px;
   min-height: 44px;
+  width: 100%;
+  min-width: 0;
 }
 
 input:focus {
@@ -148,6 +154,10 @@ button.secondary {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.grid > * {
+  min-width: 0;
 }
 
 label {
@@ -239,6 +249,14 @@ label.out {
   .row .secondary {
     width: 100%;
     min-height: 52px;
+  }
+
+  .mobile-only {
+    display: block;
+  }
+
+  #out {
+    display: none;
   }
 
   button.primary {

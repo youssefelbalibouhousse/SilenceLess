@@ -2,12 +2,16 @@ package fr.silenceless
 
 import android.app.Activity
 import android.content.ContentValues
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import androidx.activity.result.ActivityResult
 import app.tauri.Logger
+import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.TauriPlugin
@@ -22,6 +26,11 @@ import java.io.FileOutputStream
 @InvokeArg
 class ImportArgs {
   lateinit var uris: Array<String>
+}
+
+@InvokeArg
+class SaveArgs {
+  var folderUri: String? = null
 }
 
 /**
@@ -65,16 +74,61 @@ class ExportPlugin(private val activity: Activity) : Plugin(activity) {
   }
 
   @Command
-  fun saveToDownloads(invoke: Invoke) {
+  fun pickOutputFolder(invoke: Invoke) {
+    try {
+      val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+      intent.addFlags(
+        Intent.FLAG_GRANT_READ_URI_PERMISSION or
+          Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+          Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+      )
+      startActivityForResult(invoke, intent, "outputFolderResult")
+    } catch (e: Exception) {
+      invoke.reject(e.message ?: "pick folder failed")
+    }
+  }
+
+  @ActivityCallback
+  fun outputFolderResult(invoke: Invoke, result: ActivityResult) {
+    if (result.resultCode == Activity.RESULT_OK) {
+      val uri = result.data?.data
+      if (uri != null) {
+        try {
+          activity.contentResolver.takePersistableUriPermission(
+            uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+          )
+        } catch (e: Exception) {
+          Logger.error("takePersistableUriPermission failed", e)
+        }
+        val ret = JSObject()
+        ret.put("uri", uri.toString())
+        invoke.resolve(ret)
+      } else {
+        invoke.reject("aucun dossier sélectionné")
+      }
+    } else {
+      invoke.reject("sélection annulée")
+    }
+  }
+
+  @Command
+  fun saveToFolder(invoke: Invoke) {
     Thread {
       try {
+        val args = invoke.parseArgs(SaveArgs::class.java)
         val mp3s = outputDir.listFiles { f ->
           f.isFile && f.extension.equals("mp3", ignoreCase = true)
         } ?: emptyArray()
 
         val saved = mutableListOf<String>()
+        val folderUri = args.folderUri?.let { Uri.parse(it) }
         for (f in mp3s) {
-          saveToDownloads(f)
+          if (folderUri != null) {
+            writeToFolder(folderUri, f)
+          } else {
+            saveToDownloads(f)
+          }
           saved.add(f.name)
         }
 
@@ -116,6 +170,41 @@ class ExportPlugin(private val activity: Activity) : Plugin(activity) {
     }
     if (name.isNullOrBlank()) name = "audio_${System.currentTimeMillis()}.wav"
     return name!!
+  }
+
+  private fun writeToFolder(folderUri: Uri, file: File) {
+    val resolver = activity.contentResolver
+    val treeDocId = DocumentsContract.getTreeDocumentId(folderUri)
+    val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(folderUri, treeDocId)
+
+    var target: Uri? = null
+    resolver.query(
+      childrenUri,
+      arrayOf(
+        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+        DocumentsContract.Document.COLUMN_DISPLAY_NAME
+      ),
+      null,
+      null,
+      null
+    )?.use { c ->
+      while (c.moveToNext()) {
+        val docId = c.getString(0)
+        val name = c.getString(1)
+        if (name == file.name) {
+          target = DocumentsContract.buildDocumentUriUsingTree(folderUri, docId)
+          break
+        }
+      }
+    }
+
+    val docUri = target
+      ?: DocumentsContract.createDocument(resolver, folderUri, "audio/mpeg", file.name)
+      ?: throw IllegalStateException("création du document impossible")
+
+    resolver.openOutputStream(docUri)?.use { out ->
+      FileInputStream(file).use { it.copyTo(out) }
+    } ?: throw IllegalStateException("ouverture en écriture impossible")
   }
 
   private fun saveToDownloads(file: File) {
