@@ -17,6 +17,29 @@ function currentSettings() {
   };
 }
 
+function thresholdInfo(value) {
+  const v = Number(value);
+  if (v <= -51) {
+    return "Audio très faible (voix lointaine) → coupe très peu : le bruit de fond peut être conservé.";
+  }
+  if (v <= -41) {
+    return "Conférence / réunion (voix éloignée) → coupe les silences en gardant la voix. Conseillé pour vos enregistrements.";
+  }
+  if (v <= -31) {
+    return "Voix / podcast (micro correct) → bon équilibre : coupe les silences, garde un léger souffle.";
+  }
+  return "Audio fort (micro proche) → coupe fort : risque de tronquer des fins de mots faibles.";
+}
+
+function updateThreshold() {
+  const v = $("threshold").value;
+  $("threshold-value").textContent = v + " dB";
+  $("threshold-hint").textContent = thresholdInfo(v);
+}
+
+$("threshold").addEventListener("input", updateThreshold);
+updateThreshold();
+
 function resetResults() {
   $("results").hidden = false;
   $("list").innerHTML = "";

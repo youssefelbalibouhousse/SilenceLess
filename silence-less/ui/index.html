@@ -30,10 +30,15 @@
 
       <section class="card">
         <h2>Réglages</h2>
+        <div class="threshold-field">
+          <div class="threshold-head">
+            <span>Seuil de silence (dBFS)</span>
+            <span id="threshold-value" class="threshold-value">-45 dB</span>
+          </div>
+          <input type="range" id="threshold" min="-60" max="-20" step="1" value="-45" />
+          <p id="threshold-hint" class="hint"></p>
+        </div>
         <div class="grid">
-          <label>Seuil de silence (dBFS)
-            <input type="number" id="threshold" value="-45" step="1" inputmode="decimal" />
-          </label>
           <label>Durée min. d'un silence (ms)
             <input type="number" id="min-silence" value="500" step="50" inputmode="numeric" />
           </label>

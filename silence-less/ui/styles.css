@@ -151,13 +151,45 @@ button.secondary {
 
 .grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin-bottom: 12px;
 }
 
 .grid > * {
   min-width: 0;
+}
+
+.threshold-field {
+  margin-bottom: 14px;
+}
+
+.threshold-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.threshold-value {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  margin: 8px 0 6px;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+  line-height: 1.45;
 }
 
 label {
@@ -257,6 +289,10 @@ label.out {
 
   #out {
     display: none;
+  }
+
+  .grid {
+    grid-template-columns: 1fr 1fr;
   }
 
   button.primary {
